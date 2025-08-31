@@ -1,0 +1,236 @@
+#!/bin/bash
+
+# Define recycle bin directory
+recycle_bin="$HOME/.recycle_bin"
+
+# Ensure recycle bin exists
+init_recycle_bin() {
+    mkdir -p "$recycle_bin"
+}
+
+search_files()
+{
+    clear
+    read -p "Enter directory path to search in: " search_path
+    read -p "Enter name to search for (file or folder): " search_name
+
+    echo "Searching for '$search_name' in '$search_path'..."
+
+    results=$(find "$search_path" \( -type f -o -type d \) -name "$search_name" 2>/dev/null)
+
+    if [ -n "$results" ]; then
+        echo "Items found in '$search_path' matching '$search_name':"
+        echo "$results"
+    else
+        echo "No items matching '$search_name' found in '$search_path'."
+    fi
+}
+
+create_process()
+{
+    clear
+    echo "1. Calculate Sum of Two Numbers"
+    echo "2. Perform Sorting in an Array"
+    read -p "Enter your choice: " process_choice
+
+    case $process_choice in
+        1)
+            read -p "Enter the first number: " num1
+            read -p "Enter the second number: " num2
+
+            if ! [[ "$num1" =~ ^-?[0-9]+$ ]] || ! [[ "$num2" =~ ^-?[0-9]+$ ]]; then
+                echo "Invalid input. Please enter valid integers."
+            else
+                sum=$((num1 + num2))
+                echo "Sum of $num1 and $num2 is: $sum"
+            fi
+            ;;
+        2)
+            read -p "Enter the array elements (space-separated): " input_array
+            read -a array <<< "$input_array"
+
+            if [ ${#array[@]} -eq 0 ]; then
+                echo "No elements entered."
+            else
+                sorted_array=($(printf '%s\n' "${array[@]}" | sort -n))
+                echo "Original array: ${array[@]}"
+                echo "Sorted array: ${sorted_array[@]}"
+            fi
+            ;;
+        *)
+            echo "Invalid choice"
+            ;;
+    esac
+}
+
+rename_item()
+{
+    clear
+    read -p "Enter the full path of the file or folder to rename: " current_path
+
+    if [ ! -e "$current_path" ]; then
+        echo "Error: '$current_path' does not exist."
+        return
+    fi
+
+    # Get the directory and base name of the current item
+    dir_path=$(dirname "$current_path")
+    current_name=$(basename "$current_path")
+
+    read -p "Enter the new name: " new_name
+
+    # Construct the new path inside the original folder
+    new_path="$dir_path/$new_name"
+
+    if [ -e "$new_path" ]; then
+        echo "Error: An item with name '$new_name' already exists in this folder."
+        return
+    fi
+
+    if mv "$current_path" "$new_path"; then
+        echo "Renamed successfully:"
+        echo "$current_path → $new_path"
+    else
+        echo "Failed to rename."
+    fi
+}
+
+
+
+
+create_file_and_folder()
+{
+    clear
+    read -p "Enter the directory path: " directory
+    read -p "Enter the folder name: " folder_name
+    read -p "Enter the file name: " file_name
+
+    if mkdir -p "$directory/$folder_name" && touch "$directory/$folder_name/$file_name"; then
+        echo "Created directory: $directory/$folder_name"
+        echo "Created file: $directory/$folder_name/$file_name"
+    else
+        echo "Failed to create directory and/or file."
+    fi
+}
+
+# --- Recycle Bin Functions ---
+safe_delete()
+{
+    clear
+    read -p "Enter the path of file or folder to delete: " item_to_delete
+
+    if [[ -e "$item_to_delete" ]]; then
+        base_name=$(basename "$item_to_delete")
+        # Move to recycle bin keeping original name
+        if mv "$item_to_delete" "$recycle_bin/$base_name"; then
+            echo "Moved '$item_to_delete' to Recycle Bin as '$base_name'"
+        else
+            echo "Failed to move item."
+        fi
+    else
+        echo "Item does not exist: $item_to_delete"
+    fi
+}
+
+
+view_recycle_bin()
+{
+    clear
+    echo "----- Recycle Bin -----"
+    if [ -z "$(ls -A "$recycle_bin")" ]; then
+        echo "Recycle Bin is empty."
+    else
+        # Just show the names
+        ls -1 "$recycle_bin"
+    fi
+    echo "-----------------------"
+}
+
+
+restore_item()
+{
+    clear
+    echo "Items in Recycle Bin:"
+    ls -1 "$recycle_bin"
+    echo "-----------------------------"
+    read -p "Enter the exact name of the item to restore: " restore_name
+    read -p "Enter the directory path where you want to restore it: " restore_path
+
+    if [[ -e "$recycle_bin/$restore_name" ]]; then
+        mv "$recycle_bin/$restore_name" "$restore_path/"
+        echo "Restored '$restore_name' to '$restore_path/'"
+    else
+        echo "Item not found in Recycle Bin."
+    fi
+}
+
+empty_recycle_bin()
+{
+    clear
+    read -p "Are you sure you want to empty the Recycle Bin? (y/n): " confirm
+    if [[ $confirm == "y" || $confirm == "Y" ]]; then
+        rm -rf "$recycle_bin"/*
+        echo "Recycle Bin emptied."
+    else
+        echo "Cancelled."
+    fi
+}
+
+main()
+{
+    init_recycle_bin
+
+    while true; do
+        echo "------------------------------"
+        echo "      My Simple Shell GUI     "
+        echo "------------------------------"
+        echo "1. Create File and Folder"
+        echo "2. Rename File or Folder"
+        echo "3. Search for Files or Folders"
+        echo "4. Safe Delete (Move to Recycle Bin)"
+        echo "5. View Recycle Bin"
+        echo "6. Restore from Recycle Bin"
+        echo "7. Empty Recycle Bin"
+        echo "8. Sum or Sort"
+        echo "9. Exit"
+        echo "------------------------------"
+
+        read -p "Enter your choice: " choice
+
+        case $choice in
+            1)
+                create_file_and_folder
+                ;;
+            2)
+                rename_item
+                ;;
+            3)
+                search_files
+                ;;
+            4)
+                safe_delete
+                ;;
+            5)
+                view_recycle_bin
+                ;;
+            6)
+                restore_item
+                ;;
+            7)
+                empty_recycle_bin
+                ;;
+            8)
+                create_process
+                ;;
+            9)
+                echo "Exiting..."
+                exit 0
+                ;;
+            *)
+                echo "Invalid choice"
+                ;;
+        esac
+    done
+}
+
+main
